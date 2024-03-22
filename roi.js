@@ -4,7 +4,7 @@
 function initCalc() {
     console.log('ROI')
     // Initialize the debug mode flag
-    window['debug'] = false // Set to false to disable logging
+    window['debug'] = true // Set to false to disable logging
 
     // Debug log function
     function DebugLog(message) {
@@ -227,7 +227,7 @@ function initCalc() {
             }
         })
 
-        if (!window['debug']) {
+        if (window['debug']) {
             console.table(inputsStatus)
         }
 
