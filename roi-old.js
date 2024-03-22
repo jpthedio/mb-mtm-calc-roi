@@ -119,29 +119,6 @@ function initCalc() {
         number: /^\d+$/,
     }
 
-    // Debounce to save frames
-    function debounce(func, wait) {
-        let timeout
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout)
-                func(...args)
-            }
-            clearTimeout(timeout)
-            timeout = setTimeout(later, wait)
-        }
-    }
-
-    // Wrap your validation check in a debounced function to prevent excessive calls
-    const debouncedCheckAllInputsValid = debounce(function (
-        inputs,
-        buttonNext,
-        classDisable
-    ) {
-        checkAllInputsValid(inputs, buttonNext, classDisable)
-    },
-    500) // Adjust the delay as needed
-
     const inputInteractionStates = new Map() // Key: input identifier, Value: boolean
 
     function markInputAsInteracted(input) {
@@ -154,7 +131,7 @@ function initCalc() {
     }
 
     // Update validateInput to include userInteracted parameter
-    function validateInput(input, userInteracted) {
+    function validateInput(input, buttonNext, classDisable, userInteracted) {
         const type = input.getAttribute('mb-validate-input')
         const pattern = patterns[type]
 
@@ -182,43 +159,46 @@ function initCalc() {
         const inputsToValidate = slideStep.querySelectorAll(
             MB_VALIDATE_INPUTS_SELECTOR
         )
+        inputsToValidate.forEach((input) => {
+            // Handle original value storage for number inputs
+            if (input.getAttribute('mb-validate-input') === 'number') {
+                input.dataset.originalValue = input.value
+            }
 
-        setTimeout(() => {
-            inputsToValidate.forEach((input) => {
-                if (input.getAttribute('mb-validate-input') === 'number') {
-                    input.dataset.originalValue = input.value // Assume external function has completed
-                }
-
-                ;['input', 'blur'].forEach((eventType) => {
-                    input.addEventListener(eventType, function () {
-                        if (
-                            input.getAttribute('mb-validate-input') === 'number'
-                        ) {
-                            if (input.value !== input.dataset.originalValue) {
-                                markInputAsInteracted(input)
-                            }
-                        } else {
+            ;['input', 'blur'].forEach((eventType) => {
+                input.addEventListener(eventType, function () {
+                    if (input.getAttribute('mb-validate-input') === 'number') {
+                        // Mark as interacted only if value changes for number inputs
+                        if (input.value !== input.dataset.originalValue) {
                             markInputAsInteracted(input)
                         }
-                        // Use debounced validation check to improve performance
-                        debouncedCheckAllInputsValid(
-                            inputsToValidate,
-                            buttonNext,
-                            classDisable
-                        )
-                    })
+                    } else {
+                        markInputAsInteracted(input)
+                    }
+
+                    // Trigger validation
+                    checkAllInputsValid(
+                        inputsToValidate,
+                        buttonNext,
+                        classDisable
+                    )
                 })
             })
-        }, 1000) // Adjust delay as needed for external initialization
+        })
 
-        // Perform an initial validation check
+        // Initial validation state check
         checkAllInputsValid(inputsToValidate, buttonNext, classDisable)
     }
 
     function checkAllInputsValid(inputs, buttonNext, classDisable) {
         let inputsStatus = Array.from(inputs).map((input) => {
             const interacted = checkIfInputInteracted(input)
-            const validated = validateInput(input, interacted)
+            const validated = validateInput(
+                input,
+                buttonNext,
+                classDisable,
+                interacted
+            )
 
             return {
                 id: input.id || input.getAttribute('name'),
@@ -227,9 +207,7 @@ function initCalc() {
             }
         })
 
-        if (!window['debug']) {
-            console.table(inputsStatus)
-        }
+        console.table(inputsStatus)
 
         let allInteracted = inputsStatus.every((status) => status.interacted)
         let allValid = inputsStatus.every((status) => status.validated)
@@ -257,7 +235,7 @@ function initCalc() {
 
         radioInput.addEventListener('mousedown', function (e) {
             radioInput.click()
-            // DebugLog('Radio click', radioInput)
+            DebugLog('Radio click', radioInput)
         })
     })
 
